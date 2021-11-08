@@ -77,10 +77,17 @@ static void MX_SPI1_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	uint16_t i;
-	uint16_t i_seconds;
+	uint16_t ADC1_value;// Voltage
+	uint16_t ADC2_value;// Current
+	uint64_t Pwr;// Calculated power
+	uint32_t ConstantPower=100;// Reference power * 100 * 1000 for mWt scale
+	uint32_t R_Current=100;// Current sensor, Ohms
+	uint32_t DAC_Step=10;// add or subtract
+	uint32_t DAC_Value;
+	uint16_t i_seconds=0;// voltage array pointer
+	uint16_t ADC_data[1024]={0};// 1 measurement per second
+
 	uint16_t spi1_data[]={14};
-	uint16_t ADC_data[1024]={0};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -101,10 +108,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_ADC1_Init();
+  MX_ADC1_Init();// PA0
   MX_TIM7_Init();
-  MX_ADC2_Init();
-  MX_DAC1_Init();
+  MX_ADC2_Init();// PA2
+  MX_DAC1_Init();// PA6
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim7);
@@ -119,34 +126,44 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if (F_ADC_START==1){
-		  HAL_ADC_Start(&hadc1);
-		  HAL_ADC_PollForConversion(&hadc1,100);
-		  i = (uint32_t) HAL_ADC_GetValue(&hadc1);
-		  HAL_ADC_Stop(&hadc1);
 
-		  ADC_data[i_seconds]=i;
+	  //get Voltage
+	  HAL_ADC_Start(&hadc1);
+	  HAL_ADC_PollForConversion(&hadc1,10);
+	  ADC1_value = (uint32_t) HAL_ADC_GetValue(&hadc1);
+	  HAL_ADC_Stop(&hadc1);
+
+	  if (F_ADC_START==1){
+		  ADC_data[i_seconds]=ADC1_value;
 		  i_seconds++;
 
 		  F_ADC_START=0;
 	  }
-	  if (i>2000){
+	  // If capacitor has finished charging
+	  if (ADC1_value>2000){
 	  	  HAL_GPIO_WritePin(RF_on_GPIO_Port, RF_on_Pin, GPIO_PIN_SET);
 	  }
 	  else {
 	  	  HAL_GPIO_WritePin(RF_on_GPIO_Port, RF_on_Pin, GPIO_PIN_RESET);
 	  }
-//
-//	  HAL_ADC_Start(&hadc2);
-//	  HAL_ADC_PollForConversion(&hadc2,100);
-//	  i = (uint32_t) HAL_ADC_GetValue(&hadc2);
-//	  HAL_ADC_Stop(&hadc2);
-//	  if (i>1000){
-//		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
-//	  }
-//	  else {
-//		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
-//	  }
+
+	  //get Current
+	  HAL_ADC_Start(&hadc2);
+	  HAL_ADC_PollForConversion(&hadc2,10);
+	  ADC2_value = (uint32_t) HAL_ADC_GetValue(&hadc2);
+	  HAL_ADC_Stop(&hadc2);
+
+	  //calculating Power in several steps
+	  //P=V*I*100*1000
+	  Pwr=ADC1_value*1000*33/2048;// capacitor voltage
+	  	  Pwr=Pwr/R_Current;
+		  Pwr=Pwr*ADC2_value*33/2048;
+
+	  //Power setting
+	  if (Pwr<ConstantPower){DAC_Value=DAC_Value+DAC_Step;}
+	  if (Pwr>ConstantPower){DAC_Value=DAC_Value-DAC_Step;}
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
