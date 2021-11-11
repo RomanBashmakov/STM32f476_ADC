@@ -86,13 +86,22 @@ int main(void)
 
 	uint16_t ADC1_value;// Voltage
 	uint16_t ADC2_value;// Current
+	uint16_t ADC_difference;
 	uint64_t Pwr;// Calculated power
-	uint32_t ConstantPower=100;// Reference power * 1000 for mWt scale
-	uint32_t R_Current=100;// Current sensor, Ohms
-	uint32_t DAC_Step=10;// add or subtract
-	uint32_t DAC_Value=0;
+	uint32_t ConstantPower=100;// Reference power * 1000 * 1000 for uWt scale
+	uint32_t R_Current=91;// Current sensor, Ohms
+	uint32_t DAC_Step=1;// add or subtract
+	uint32_t DAC_Value=0;// to be set
 	uint16_t i_seconds=0;// voltage array pointer
-	uint16_t ADC_data[1024]={0};// 1 measurement per second
+#define t_seconds 10000// duration of the experiment
+
+	uint16_t Indicator_timers=0;
+	uint16_t Indicator_Frame=100;
+
+	// 1 measurement per second
+	uint16_t ADC1_data[t_seconds]={0};// Voltage
+	uint16_t ADC2_data[t_seconds]={0};// Current
+	uint32_t DAC_data[t_seconds]={0};// DAC to be set
 
 	uint16_t spi1_data[]={14};
   /* USER CODE END 1 */
@@ -151,9 +160,11 @@ int main(void)
 
 	  //calculating Power in several steps
 	  //P=V*I*1000
+	  if (ADC2_value>ADC1_value){ADC_difference=ADC2_value-ADC1_value;}
+	  else {ADC_difference=0;}
 	  Pwr=ADC1_value*1000*3/2048;// capacitor voltage
+		  Pwr=Pwr*(ADC_difference)*1000*3/2048;//
 	  	  Pwr=Pwr/R_Current;
-		  Pwr=Pwr*ADC2_value*3/2048;
 
 	  //Power setting
 	  if ((Pwr<ConstantPower)&&(DAC_Value<(4096-DAC_Step))){DAC_Value=DAC_Value+DAC_Step;}
@@ -165,22 +176,37 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  HAL_DAC_SetValue(&hdac1,DAC_CHANNEL_2,DAC_ALIGN_12B_R,DAC_Value);
 
-	  // write
+	  // write voltage, current, DAC_value
 	  if (F_ADC_START==1){// if period has passed
-		  ADC_data[i_seconds]=ADC1_value;
+		  ADC1_data[i_seconds]=ADC1_value;
+		  ADC2_data[i_seconds]=ADC2_value;
+		  DAC_data[i_seconds]=DAC_Value;
+
 		  i_seconds++;
+
+		  Indicator_timers++;
+
+		  if (Indicator_timers==Indicator_Frame){
+			  HAL_GPIO_WritePin(RF_on_GPIO_Port, RF_on_Pin, GPIO_PIN_SET);
+			  HAL_Delay(10);
+		  	  HAL_GPIO_WritePin(RF_on_GPIO_Port, RF_on_Pin, GPIO_PIN_RESET);
+
+			  Indicator_timers=0;
+		  }
 
 		  F_ADC_START=0;
 	  }
 	  // If capacitor has finished charging
 	  if (ADC1_value>3500){
 	  	  HAL_GPIO_WritePin(RF_on_GPIO_Port, RF_on_Pin, GPIO_PIN_SET);
+		  HAL_Delay(1000);
+	  	  HAL_GPIO_WritePin(RF_on_GPIO_Port, RF_on_Pin, GPIO_PIN_RESET);
+		  HAL_Delay(1000);
 	  }
 	  else {
 	  	  HAL_GPIO_WritePin(RF_on_GPIO_Port, RF_on_Pin, GPIO_PIN_RESET);
 	  }
-//
-//
+
 //	  HAL_GPIO_WritePin(CS_Pin_Pin, CS_Pin_GPIO_Port, GPIO_PIN_RESET);
 //	  HAL_GPIO_WritePin(RF_on_GPIO_Port, RF_on_Pin, GPIO_PIN_RESET);
 //	  HAL_SPI_Transmit(&hspi1, spi1_data[0], 1, 1000);
