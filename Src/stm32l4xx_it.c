@@ -209,7 +209,19 @@ void TIM7_IRQHandler(void)
   HAL_TIM_IRQHandler(&htim7);
   /* USER CODE BEGIN TIM7_IRQn 1 */
 	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
-	F_ADC_START=1;
+
+	Meas_Timer++;
+	if (Meas_Timer==Meas_Period){
+		F_ADC_START=1;
+		Meas_Timer=0;
+	}
+
+	Indicator_timers++;
+
+	if (Indicator_timers==Indicator_Frame){
+		F_Indicator=1;
+		Indicator_timers=0;
+	}
 
   /* USER CODE END TIM7_IRQn 1 */
 }

@@ -34,6 +34,11 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 
 uint16_t F_ADC_START;
+uint16_t Meas_Timer;
+uint16_t Meas_Period;
+uint16_t F_Indicator;
+uint16_t Indicator_timers;
+uint16_t Indicator_Frame;
 
 /* USER CODE END Includes */
 
