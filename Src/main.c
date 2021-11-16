@@ -86,16 +86,17 @@ int main(void)
 	uint32_t ADC_cal_value;
 	uint16_t ADC1_value;// Voltage
 	uint16_t ADC2_value;// Current
-	uint16_t ADC1_voltage;// calculated Voltage ADC1
-	uint16_t ADC2_voltage;// calculated Voltage ADC2
-	uint16_t ADC_difference;
-	uint64_t Pwr;// Calculated power
-	uint32_t ConstantPower=1000;// Reference power * 1000 * 1000 for uWt scale
+	int ADC1_voltage;// calculated Voltage ADC1
+	int ADC2_voltage;// calculated Voltage ADC2
+	int ADC_difference;
+	int I_current;
+	int Pwr;// Calculated power
+	uint32_t ConstantPower=3000;// Reference power * 1000 * 1000 for uWt scale
 	uint32_t R_Current=91;// Current sensor, Ohms
-	uint32_t DAC_Step=1;// add or subtract
+	uint32_t DAC_Step=5;// add or subtract
 	uint32_t DAC_Value=0;// to be set
 	uint16_t i_seconds=0;// voltage array pointer
-#define t_seconds 10000// duration of the experiment
+#define t_seconds 10000// duration of the experiment, quantity of data
 
 	// 1 measurement per second
 	uint16_t ADC1_data[t_seconds]={0};// Voltage
@@ -111,10 +112,10 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 	Meas_Timer=0;
-	Meas_Period=10;
+	Meas_Period=10000;//10 000 ms
 
 	Indicator_timers=0;
-	Indicator_Frame=300;
+	Indicator_Frame=1000;// 1 000 ms
 
   /* USER CODE END Init */
 
@@ -151,42 +152,55 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  //get Voltage
-	  HAL_ADC_Start(&hadc1);
-	  HAL_ADC_PollForConversion(&hadc1,10);
-	  ADC1_value = (uint32_t) HAL_ADC_GetValue(&hadc1);
-	  HAL_ADC_Stop(&hadc1);
-	  ADC1_voltage=ADC1_value*3000/4096;
+	  // measure if 1 ms has passed
+	  if (F_1ms==1){
 
-	  //get Current
-	  HAL_ADC_Start(&hadc2);
-	  HAL_ADC_PollForConversion(&hadc2,10);
-	  ADC2_value = (uint32_t) HAL_ADC_GetValue(&hadc2);
-	  HAL_ADC_Stop(&hadc2);
-	  ADC2_voltage=ADC2_value*3000/4096;
+		//get Voltage
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1,10);
+		ADC1_value = (uint32_t) HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_Stop(&hadc1);
+		ADC1_voltage=ADC1_value*3000/4096;
 
-	  //calculating Power in several steps
-	  //P=V*I*1000
-	  if (ADC2_value>ADC1_value){ADC_difference=ADC2_voltage-ADC1_voltage;}
-	  else {ADC_difference=0;}
-	  Pwr=ADC1_voltage*ADC_difference/R_Current;// capacitor voltage
+		//get Current
+		HAL_ADC_Start(&hadc2);
+		HAL_ADC_PollForConversion(&hadc2,10);
+		ADC2_value = (uint32_t) HAL_ADC_GetValue(&hadc2);
+		HAL_ADC_Stop(&hadc2);
+		ADC2_voltage=ADC2_value*3000/4096;
 
-	  //Power setting
-	  if ((Pwr<ConstantPower)&&(DAC_Value<(4096-DAC_Step))){DAC_Value=DAC_Value+DAC_Step;}
-	  if ((Pwr>ConstantPower)&&(DAC_Value>DAC_Step)){DAC_Value=DAC_Value-DAC_Step;}
+		//calculating Power in several steps
+		//P=V*I*1000
 
+		ADC_difference=ADC2_voltage-ADC1_voltage;
+		//if (ADC2_value>ADC1_value){ADC_difference=ADC2_voltage-ADC1_voltage;}
+		//else {ADC_difference=0;}
 
-	  HAL_DAC_SetValue(&hdac1,DAC_CHANNEL_2,DAC_ALIGN_12B_R,DAC_Value);
+		I_current=ADC_difference/R_Current;
+		Pwr=ADC1_voltage*I_current*2*2;// capacitor voltage, voltage divider by two
 
-	  // write voltage, current, DAC_value
+		//Power setting
+		if ((Pwr<ConstantPower)&&(DAC_Value<(4096-DAC_Step))){
+		  DAC_Value=DAC_Value+DAC_Step;
+		}
+		if ((Pwr>ConstantPower)&&(DAC_Value>DAC_Step)){
+		  DAC_Value=DAC_Value-DAC_Step;
+		}
+
+		//set voltage to be amplified by the operational amplifier
+		HAL_DAC_SetValue(&hdac1,DAC_CHANNEL_2,DAC_ALIGN_12B_R,DAC_Value);
+
+		F_1ms=0;
+	  }
+
+		// write voltage, current, DAC_value
 	  if (F_ADC_START==1){// if period has passed
-		  ADC1_data[i_seconds]=ADC1_value;
-		  ADC2_data[i_seconds]=ADC2_value;
-		  DAC_data[i_seconds]=DAC_Value;
+		 ADC1_data[i_seconds]=ADC1_value;
+		 ADC2_data[i_seconds]=ADC2_value;
+		 DAC_data[i_seconds]=DAC_Value;
 
-		  i_seconds++;
-
-		  F_ADC_START=0;
+		 i_seconds++;
+		 F_ADC_START=0;
 	  }
 
 	  if (F_Indicator==1){
@@ -491,9 +505,9 @@ static void MX_TIM7_Init(void)
 
   /* USER CODE END TIM7_Init 1 */
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 100;
+  htim7.Init.Prescaler = 1;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 40000;
+  htim7.Init.Period = 2000;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
@@ -506,7 +520,8 @@ static void MX_TIM7_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM7_Init 2 */
-
+  htim7.Init.Prescaler = 1;//1 ms
+  htim7.Init.Period = 2000;
   /* USER CODE END TIM7_Init 2 */
 
 }

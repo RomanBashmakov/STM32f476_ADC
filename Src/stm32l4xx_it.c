@@ -208,7 +208,8 @@ void TIM7_IRQHandler(void)
   /* USER CODE END TIM7_IRQn 0 */
   HAL_TIM_IRQHandler(&htim7);
   /* USER CODE BEGIN TIM7_IRQn 1 */
-	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
+
+	F_1ms=1;
 
 	Meas_Timer++;
 	if (Meas_Timer==Meas_Period){
@@ -219,7 +220,8 @@ void TIM7_IRQHandler(void)
 	Indicator_timers++;
 
 	if (Indicator_timers==Indicator_Frame){
-		F_Indicator=1;
+		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
+		//F_Indicator=1;
 		Indicator_timers=0;
 	}
 
