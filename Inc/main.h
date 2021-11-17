@@ -33,15 +33,15 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-uint16_t Meas_Timer;// counter
-uint16_t Meas_Period;// time frame for saving measurements
-uint16_t F_ADC_START;//
+extern uint16_t Meas_Timer;// counter
+extern uint16_t Meas_Period;// time frame for saving measurements
+extern uint16_t F_ADC_START;//
 
-uint16_t F_1ms;// equals 1 if 1 ms has passed
+extern uint16_t F_1ms;// equals 1 if 1 ms has passed
 
-uint16_t Indicator_timers;//counter
-uint16_t Indicator_Frame;
-uint16_t F_Indicator;//switch on the buzzer if time frame has passed
+extern uint16_t Indicator_timers;//counter
+extern uint16_t Indicator_Frame;
+extern uint16_t F_Indicator;//switch on the buzzer if time frame has passed
 
 /* USER CODE END Includes */
 

@@ -93,10 +93,21 @@ int main(void)
 	int Pwr;// Calculated power
 	uint32_t ConstantPower=3000;// Reference power * 1000 * 1000 for uWt scale
 	uint32_t R_Current=91;// Current sensor, Ohms
-	uint32_t DAC_Step=5;// add or subtract
+	int DAC_Step=5;// add or subtract
 	uint32_t DAC_Value=0;// to be set
 	uint16_t i_seconds=0;// voltage array pointer
 #define t_seconds 10000// duration of the experiment, quantity of data
+
+	uint16_t Meas_Timer;// counter
+	uint16_t Meas_Period;// time frame for saving measurements
+	uint16_t F_ADC_START;//
+
+	uint16_t F_1ms;// equals 1 if 1 ms has passed
+
+	uint16_t Indicator_timers;//counter
+	uint16_t Indicator_Frame;
+	uint16_t F_Indicator;//switch on the buzzer if time frame has passed
+
 
 	// 1 measurement per second
 	uint16_t ADC1_data[t_seconds]={0};// Voltage
