@@ -43,6 +43,11 @@ extern uint16_t Indicator_timers;//counter
 extern uint16_t Indicator_Frame;
 extern uint16_t F_Indicator;//switch on the buzzer if time frame has passed
 
+//SoftTimer is based on interrupt
+extern struct SoftTimer SoftTimer1ms, SoftTimer1000ms, SoftTimer1min;
+extern void incrementer(struct SoftTimer *softtimer);
+
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
