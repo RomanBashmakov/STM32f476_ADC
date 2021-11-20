@@ -72,25 +72,25 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t ADC_cal_value;
-uint16_t ADC1_value, ADC2_value;// Voltage, Current
-int ADC1_voltage, ADC2_voltage;// calculated Voltage ADC1, calculated Voltage ADC2
-int ADC_difference;
-int I_current;
-int Pwr;// Calculated power
-uint32_t ConstantPower=3000;// Reference power * 1000 * 1000 for uWt scale
-uint32_t R_Current=100;// Current sensor, Ohms
+	uint32_t ADC_cal_value;
+	uint16_t ADC1_value, ADC2_value;// Voltage, Current
+	int ADC1_voltage, ADC2_voltage;// calculated Voltage ADC1, calculated Voltage ADC2
+	int ADC_difference;
+	int I_current;
+	int Pwr;// Calculated power
+	uint32_t ConstantPower=3000;// Reference power * 1000 * 1000 for uWt scale
+	int R_Current=100;// Current sensor, Ohms
 
-int DAC_Step;// add or subtract
-uint32_t DAC_Value=0;// to be set
-int PrevRegulationError, RegulationError, P_regulator, I_regulator, D_regulator, kP, kI, kD;
+	int DAC_Step;// add or subtract
+	int DAC_Value=0;// to be set
+	int PrevRegulationError, RegulationError, P_regulator, I_regulator, D_regulator, kP=10, kI=1, kD=0;
 
-// 1 measurement per second
-#define t_seconds 10000// data size
-uint16_t i_seconds=0;// voltage array pointer
-uint16_t ADC1_data[t_seconds]={0};// Voltage
-uint16_t ADC2_data[t_seconds]={0};// Current
-uint32_t DAC_data[t_seconds]={0};// DAC to be set
+	// 1 measurement per second
+	#define t_seconds 10000// data size
+	uint16_t i_seconds=0;// voltage array pointer
+	uint16_t ADC1_data[t_seconds]={0};// Voltage
+	uint16_t ADC2_data[t_seconds]={0};// Current
+	uint32_t DAC_data[t_seconds]={0};// DAC to be set
 
 //SoftTimer is based on interrupt
 struct SoftTimer {
@@ -124,7 +124,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  SoftTimer1ms.frame=1;
+  SoftTimer1ms.frame=100;
   SoftTimer1000ms.frame=5000;// 5 sec !
   SoftTimer1min.frame=1*60*1000;
 
@@ -184,20 +184,30 @@ int main(void)
 		//P=V*I*1000 (uWt)
 		ADC_difference=ADC2_voltage-ADC1_voltage;
 		I_current=ADC_difference/R_Current;
-		Pwr=ADC1_voltage*I_current*2*2;// capacitor voltage, voltage divider by two
+		Pwr=ADC1_voltage*2*2*ADC_difference/R_Current;// capacitor voltage, voltage divider by two
 
 		//PID regulator
 		PrevRegulationError=RegulationError;
-		RegulationError=(Pwr-ConstantPower);
+		RegulationError=ConstantPower-Pwr;
 		P_regulator=kP*RegulationError;
 		I_regulator=I_regulator+kI*RegulationError;
 		D_regulator=kD*(RegulationError-PrevRegulationError);
-		DAC_Step=P_regulator+I_regulator+D_regulator;
+		DAC_Step=(P_regulator+I_regulator+D_regulator)/1000;
 
-		DAC_Value=DAC_Value+DAC_Step;
+		if ((DAC_Value+DAC_Step)<0){;}
+		else {
+			DAC_Value=DAC_Value+DAC_Step;
+		}
+
+		if(DAC_Value>4000){
+			DAC_Value=4000;
+		}
+		if(DAC_Value<0){
+			DAC_Value=0;
+		}
 
 		//set voltage to be amplified by the operational amplifier
-		HAL_DAC_SetValue(&hdac1,DAC_CHANNEL_2,DAC_ALIGN_12B_R,DAC_Value);
+		HAL_DAC_SetValue(&hdac1,DAC_CHANNEL_2,DAC_ALIGN_12B_R,(uint32_t)DAC_Value);
 
 		SoftTimer1ms.flag=0;
 	  }
